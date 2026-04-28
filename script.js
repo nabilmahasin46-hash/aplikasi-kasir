@@ -165,42 +165,42 @@ function hitungKembalian() {
 
 // Fungsi Proses Pembayaran
 function prosesPembayaran() {
+    const jumlahBayar = parseInt(jumlahBayarInput.value);
+    const totalBayar = parseInt(totalBayarSpan.textContent.replace(/\D/g, ''));
+
     if (daftarItem.length === 0) {
-        showModal('Peringatan', 'Keranjang masih kosong. Tambahkan produk terlebih dahulu!');
+        showModal('Error', 'Keranjang masih kosong!');
         return;
     }
 
-    const totalBayarText = totalBayarSpan.textContent.replace('Rp ', '').replace(/\./g, '');
-    const totalBayar = parseInt(totalBayarText) || 0;
-    const jumlahBayar = parseInt(jumlahBayarInput.value) || 0;
-
-    if (jumlahBayar === 0) {
-        showModal('Error', 'Masukkan jumlah pembayaran!');
+    if (!jumlahBayar || jumlahBayar < totalBayar) {
+        showModal('Error', 'Jumlah pembayaran tidak cukup!');
         return;
     }
 
-    if (jumlahBayar < totalBayar) {
-        showModal('Error', `Pembayaran kurang sebesar Rp ${formatRupiah(totalBayar - jumlahBayar)}`);
-        return;
-    }
+    // DATA YANG AKAN DIKIRIM KE DATABASE
+    const dataKirim = {
+        total_item: daftarItem.length,
+        total_bayar: totalBayar,
+        bayar: jumlahBayar,
+        kembalian: jumlahBayar - totalBayar
+    };
 
-    const kembalian = jumlahBayar - totalBayar;
-    const message = `
-Pembayaran Berhasil!
-
-Total Item: ${totalItemSpan.textContent} pcs
-Subtotal: ${subtotalSpan.textContent}
-Diskon: ${nilaiDiskonSpan.textContent}
----
-Total Bayar: ${totalBayarSpan.textContent}
-Jumlah Bayar: Rp ${formatRupiah(jumlahBayar)}
-Kembalian: Rp ${formatRupiah(kembalian)}
-
-Terima kasih telah berbelanja!
-    `;
-
-    showModal('Transaksi Berhasil', message);
-    resetTransaksi();
+    // KIRIM KE PHP
+    fetch('simpan_transaksi.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataKirim)
+    })
+    .then(res => res.json())
+    .then(hasil => {
+        if(hasil.status === 'success') {
+            showModal('Berhasil!', 'Transaksi telah disimpan ke database.');
+            resetTransaksi();
+        } else {
+            showModal('Gagal', 'Terjadi kesalahan sistem.');
+        }
+    });
 }
 
 // Fungsi Reset Transaksi
